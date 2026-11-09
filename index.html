@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>商品展示</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#f43f5e',
+          },
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .card-shadow {
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      }
+      .tag-active {
+        @apply bg-primary text-white;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100 pb-20">
+  <!-- 顶部导航 -->
+  <header class="bg-primary text-white py-4 px-4 sticky top-0 z-10">
+    <h1 class="text-xl font-bold text-center">好物商品馆</h1>
+  </header>
+
+  <!-- 搜索框 -->
+  <div class="p-4">
+    <div class="bg-white rounded-full flex items-center px-4 py-3">
+      <i class="fa fa-search text-gray-400 mr-2"></i>
+      <input type="text" placeholder="搜索商品..." class="flex-1 outline-none text-sm">
+    </div>
+  </div>
+
+  <!-- 分类标签 -->
+  <div class="px-4 mb-3 flex gap-2 overflow-x-auto">
+    <button data-cate="all" class="cate-btn tag-active px-4 py-2 rounded-full text-sm whitespace-nowrap border border-primary transition-all">全部</button>
+    <button data-cate="clothes" class="cate-btn px-4 py-2 rounded-full text-sm whitespace-nowrap border border-gray-300 transition-all">服装</button>
+    <button data-cate="digital" class="cate-btn px-4 py-2 rounded-full text-sm whitespace-nowrap border border-gray-300 transition-all">数码</button>
+    <button data-cate="snack" class="cate-btn px-4 py-2 rounded-full text-sm whitespace-nowrap border border-gray-300 transition-all">零食</button>
+  </div>
+
+  <!-- 商品列表区域 -->
+  <div class="px-3 grid grid-cols-2 gap-3" id="goodsList">
+  </div>
+
+  <!-- 商品弹窗详情 -->
+  <div id="detailModal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-xl w-full max-w-md max-h-[85vh] overflow-auto">
+      <img id="modalImg" src="" class="w-full">
+      <div class="p-4">
+        <h2 id="modalTitle" class="text-lg font-bold"></h2>
+        <p id="modalPrice" class="text-primary text-xl font-bold my-2"></p>
+        <div id="modalDesc" class="text-gray-500 text-sm leading-relaxed"></div>
+        <div class="mt-4 flex gap-3">
+          <button id="closeModal" class="flex-1 border border-gray-300 py-3 rounded-lg">关闭</button>
+          <a id="contactBtn" href="https://v.douyin.com/" target="_blank" class="flex-1 bg-primary text-white py-3 rounded-lg text-center">联系咨询</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========商品数据，新增 category 分类字段=========
+    const goods = [
+      {
+        img: "https://picsum.photos/400/400?random=1",
+        title: "简约双肩背包",
+        price: "99.00",
+        desc: "大容量背包，防水面料，适合学生、通勤，多隔层设计，轻便不压肩。",
+        category: "clothes"
+      },
+      {
+        img: "https://picsum.photos/400/400?random=2",
+        title: "无线蓝牙耳机",
+        price: "159.00",
+        desc: "超长续航，高清通话，降噪，蓝牙5.3，佩戴舒适，运动不易掉。",
+        category: "digital"
+      },
+      {
+        img: "https://picsum.photos/400/400?random=3",
+        title: "网红陶瓷水杯",
+        price: "39.90",
+        desc: "高硼硅陶瓷，耐高温，可爱外观，自带杯盖，家用办公都合适。",
+        category: "digital"
+      },
+      {
+        img: "https://picsum.photos/400/400?random=4",
+        title: "遮阳渔夫帽",
+        price: "29.90",
+        desc: "UPF50+防晒，透气面料，可折叠收纳，男女同款。",
+        category: "clothes"
+      },
+      {
+        img: "https://picsum.photos/400/400?random=5",
+        title: "机械键盘",
+        price: "199.00",
+        desc: "青轴手感，RGB灯光，全键无冲，办公游戏两用。",
+        category: "digital"
+      },
+      {
+        img: "https://picsum.photos/400/400?random=6",
+        title: "芒果干零食",
+        price: "24.90",
+        desc: "厚切芒果干，酸甜可口，独立小包装，追剧零食。",
+        category: "snack"
+      },
+      {
+        img: "https://picsum.photos/400/400?random=7",
+        title: "猪肉脯",
+        price: "32.00",
+        desc: "蜜汁风味猪肉脯，肉质紧实，休闲解馋小零食。",
+        category: "snack"
+      }
+    ];
+
+    const listEl = document.getElementById('goodsList');
+    const modal = document.getElementById('detailModal');
+    const input = document.querySelector('input');
+    const cateBtns = document.querySelectorAll('.cate-btn');
+
+    let activeCate = 'all';
+
+    // 渲染商品
+    function renderList() {
+      let filterData = goods;
+      // 分类筛选
+      if (activeCate !== 'all') {
+        filterData = filterData.filter(item => item.category === activeCate);
+      }
+      // 搜索筛选
+      const kw = input.value.trim().toLowerCase();
+      if (kw) {
+        filterData = filterData.filter(g => g.title.toLowerCase().includes(kw));
+      }
+
+      listEl.innerHTML = '';
+      filterData.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-xl overflow-hidden card-shadow';
+        card.innerHTML = `
+          <img src="${item.img}" class="w-full aspect-square object-cover">
+          <div class="p-3">
+            <h3 class="text-sm font-medium line-clamp-2 h-10">${item.title}</h3>
+            <p class="text-primary font-bold mt-2">¥${item.price}</p>
+          </div>
+        `
+        card.onclick = () => {
+          document.getElementById('modalImg').src = item.img;
+          document.getElementById('modalTitle').innerText = item.title;
+          document.getElementById('modalPrice').innerText = `¥${item.price}`;
+          document.getElementById('modalDesc').innerText = item.desc;
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        }
+        listEl.appendChild(card);
+      })
+    }
+
+    // 分类点击事件
+    cateBtns.forEach(btn => {
+      btn.onclick = () => {
+        cateBtns.forEach(b => {
+          b.classList.remove('tag-active');
+          b.classList.add('border-gray-300');
+        })
+        btn.classList.add('tag-active');
+        btn.classList.remove('border-gray-300');
+        activeCate = btn.dataset.cate;
+        renderList();
+      }
+    })
+
+    // 搜索输入
+    input.oninput = () => {
+      renderList();
+    }
+
+    // 关闭弹窗
+    document.getElementById('closeModal').onclick = () => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    // 初始渲染
+    renderList();
+  </script>
+</body>
+</html>
